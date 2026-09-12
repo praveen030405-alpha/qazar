@@ -48,36 +48,35 @@ public sealed partial class ViewerPage : Page
 
     private void PdfRenderImage_Loaded(object sender, RoutedEventArgs e)
     {
+        // Wait for a document to be opened to render.
+    }
+
+    private void RenderCurrentPage(ushort pageIndex = 0)
+    {
         try
         {
             uint width = 800;
             uint height = 1000;
             
-            // Create a WriteableBitmap matching the desired PDF page resolution
             var bitmap = new Microsoft.UI.Xaml.Media.Imaging.WriteableBitmap((int)width, (int)height);
-            
-            // Allocate a managed byte array for the raw pixels (BGRA format)
             byte[] pixelData = new byte[width * height * 4];
-            
-            // Safely pin the managed array so we can pass its raw pointer to Rust
             var handle = System.Runtime.InteropServices.GCHandle.Alloc(pixelData, System.Runtime.InteropServices.GCHandleType.Pinned);
             try
             {
-                Interop.QdcEngine.qdc_render_page(handle.AddrOfPinnedObject(), width, height);
+                Interop.QdcEngine.qdc_render_page(handle.AddrOfPinnedObject(), width, height, pageIndex);
             }
             finally
             {
                 handle.Free();
             }
 
-            // Write the populated pixel data into the WriteableBitmap's PixelBuffer
             using (var stream = System.Runtime.InteropServices.WindowsRuntime.WindowsRuntimeBufferExtensions.AsStream(bitmap.PixelBuffer))
             {
                 stream.Write(pixelData, 0, pixelData.Length);
             }
 
             this.PdfRenderImage.Source = bitmap;
-            System.Diagnostics.Debug.WriteLine($"[QDC Engine] Rendered page to WriteableBitmap.");
+            System.Diagnostics.Debug.WriteLine($"[QDC Engine] Rendered page {pageIndex} to WriteableBitmap.");
         }
         catch (Exception ex)
         {
@@ -87,11 +86,7 @@ public sealed partial class ViewerPage : Page
 
     private async void OpenPdfButton_Click(object sender, RoutedEventArgs e)
     {
-        // 1. Create a native FileOpenPicker
         var picker = new FileOpenPicker();
-        
-        // 2. Associate the picker with the main window HWND 
-        // We get the HWND from the App's main window
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
         InitializeWithWindow.Initialize(picker, hwnd);
 
@@ -99,26 +94,51 @@ public sealed partial class ViewerPage : Page
         picker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
         picker.FileTypeFilter.Add(".pdf");
 
-        // 3. Show picker
         var file = await picker.PickSingleFileAsync();
         if (file != null)
         {
-            // Update UI
             DocumentTitleText.Text = file.Name;
             WelcomeOverlay.Visibility = Visibility.Collapsed;
             
-            // TODO: Pass file path to Rust DLL to begin rendering
             System.Diagnostics.Debug.WriteLine($"Selected PDF: {file.Path}");
 
-            // TEST: Read the title aloud to verify TTS works
-            await SpeakTextAsync($"Opened document: {file.Name}");
+            // Open document in Rust Engine
+            Interop.QdcEngine.qdc_open_document(file.Path);
+            
+            // Render first page
+            RenderCurrentPage(0);
+
+            // Test Premium TTS Mock
+            await SpeakTextAsync($"Opened document: {file.Name}. Converting to docx.");
+            
+            // Test Conversion
+            Interop.QdcEngine.qdc_convert_to_word(file.Path);
         }
     }
 
     private async System.Threading.Tasks.Task SpeakTextAsync(string text)
     {
-        var stream = await _synthesizer.SynthesizeTextToStreamAsync(text);
-        _mediaPlayer.Source = Windows.Media.Core.MediaSource.CreateFromStream(stream, stream.ContentType);
-        _mediaPlayer.Play();
+        System.Diagnostics.Debug.WriteLine($"[TTS] Synthesizing: {text}");
+        
+        uint outLen = 0;
+        IntPtr ptr = Interop.QdcEngine.qdc_tts_synthesize(text, out outLen);
+        
+        if (ptr != IntPtr.Zero && outLen > 0)
+        {
+            byte[] wavData = new byte[outLen];
+            Marshal.Copy(ptr, wavData, 0, (int)outLen);
+            Interop.QdcEngine.qdc_tts_free_buffer(ptr, outLen);
+            
+            using (var memoryStream = new System.IO.MemoryStream(wavData))
+            {
+                var ras = memoryStream.AsRandomAccessStream();
+                _mediaPlayer.Source = Windows.Media.Core.MediaSource.CreateFromStream(ras, "audio/wav");
+                _mediaPlayer.Play();
+            }
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine("[TTS] Failed to synthesize audio.");
+        }
     }
 }

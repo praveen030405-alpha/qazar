@@ -1,24 +1,31 @@
 use std::ffi::{c_char, CStr, CString};
 use std::sync::{Mutex, Once};
+use std::path::{Path, PathBuf};
 use log::{error, info};
 use once_cell::sync::Lazy;
 
-use pdf_kernel::engine::{PdfKernel, PdfKernelConfig};
-use pdfium_render::prelude::*;
+use pdf_kernel::engine::PdfEngine;
 use speech_engine::{MockTtsEngine, TtsEngine};
 use text_engine::extractor::TextExtractor;
 
 static INIT: Once = Once::new();
 
+// PDFium is !Send and !Sync, but we protect it with a Mutex.
+struct SafeEngine(PdfEngine);
+unsafe impl Send for SafeEngine {}
+unsafe impl Sync for SafeEngine {}
+
 // Global state for the Windows App
 struct QdcState {
-    kernel: Option<PdfKernel>,
+    kernel: Option<SafeEngine>,
+    active_path: Option<PathBuf>,
     tts: MockTtsEngine,
 }
 
 static STATE: Lazy<Mutex<QdcState>> = Lazy::new(|| {
     Mutex::new(QdcState {
         kernel: None,
+        active_path: None,
         tts: MockTtsEngine::new(),
     })
 });
@@ -30,7 +37,23 @@ pub extern "C" fn qdc_init() -> i32 {
         env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
         info!("QDC Engine Initialized (WinUI 3 Bridge)");
     });
-    0
+    
+    // Initialize the kernel
+    if let Ok(mut state) = STATE.lock() {
+        let current_dir = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
+        match PdfEngine::new(&current_dir) {
+            Ok(kernel) => {
+                state.kernel = Some(SafeEngine(kernel));
+                0
+            }
+            Err(e) => {
+                error!("Failed to initialize PdfEngine: {:?}", e);
+                -1
+            }
+        }
+    } else {
+        -2
+    }
 }
 
 /// Health check
@@ -51,20 +74,14 @@ pub extern "C" fn qdc_open_document(path: *const c_char) -> i32 {
 
     info!("Opening PDF document: {}", file_path);
 
-    let config = PdfKernelConfig {
-        cache_memory_mb: 256,
-        enable_gpu_acceleration: true,
-        ..Default::default()
-    };
-
-    let mut kernel = PdfKernel::new(config);
-    if let Err(e) = kernel.load_document(file_path) {
-        error!("Failed to load document: {:?}", e);
-        return -3;
-    }
-
     if let Ok(mut state) = STATE.lock() {
-        state.kernel = Some(kernel);
+        state.active_path = Some(PathBuf::from(file_path));
+        if let Some(SafeEngine(kernel)) = &mut state.kernel {
+            if let Err(e) = kernel.open_cached_doc(Path::new(file_path), None) {
+                error!("Failed to load document: {:?}", e);
+                return -3;
+            }
+        }
         0
     } else {
         error!("Failed to lock QDC State");
@@ -83,38 +100,50 @@ pub extern "C" fn qdc_render_page(pixel_buffer: *mut u8, width: u32, height: u32
         Err(_) => return -2,
     };
 
+    let path = match state.active_path.clone() {
+        Some(p) => p,
+        None => return -3,
+    };
+
     let kernel = match &mut state.kernel {
-        Some(k) => k,
+        Some(SafeEngine(k)) => k,
         None => {
             error!("No document loaded");
-            return -3;
+            return -4;
         }
     };
 
-    // Use PDFium's render config with SSAA and LCD text anti-aliasing
-    let config = PdfRenderConfig::new()
-        .set_target_width(width as u16)
-        .set_maximum_height(height as u16)
-        .clear_render_flags()
-        .set_render_for_printing(false)
-        .set_optimize_text_for_lcd(true); // Enhances text clarity on PC
-
-    match kernel.render_page_custom(page_index, &config) {
-        Ok(bitmap) => {
+    // Calculate DPI to fit width/height
+    // For simplicity in the bridge, we'll just request a high DPI (e.g. 144)
+    // The kernel will clamp to the max resolution.
+    let dpi = 144.0; 
+    
+    match kernel.render_page_direct(&path, page_index as usize, dpi) {
+        Ok(rgba_buffer) => {
             let length = (width * height * 4) as usize;
             let pixels = unsafe { std::slice::from_raw_parts_mut(pixel_buffer, length) };
-            let raw_bytes = bitmap.as_bytes();
+            let raw_bytes = &rgba_buffer.data;
             
-            // PDFium outputs BGRA bytes, which perfectly matches WriteableBitmap!
+            // PDFium outputs BGRA, but our RgbaBuffer outputs RGBA! 
+            // WriteableBitmap in C# is BGRA8.
             let copy_len = std::cmp::min(pixels.len(), raw_bytes.len());
-            pixels[..copy_len].copy_from_slice(&raw_bytes[..copy_len]);
+            
+            // Convert RGBA to BGRA
+            for i in (0..copy_len).step_by(4) {
+                if i + 3 < copy_len {
+                    pixels[i] = raw_bytes[i + 2];     // B
+                    pixels[i + 1] = raw_bytes[i + 1]; // G
+                    pixels[i + 2] = raw_bytes[i];     // R
+                    pixels[i + 3] = raw_bytes[i + 3]; // A
+                }
+            }
             
             info!("Successfully rendered page {} at {}x{}", page_index, width, height);
             0
         }
         Err(e) => {
             error!("Failed to render page: {:?}", e);
-            -4
+            -5
         }
     }
 }
@@ -139,28 +168,35 @@ pub extern "C" fn qdc_convert_to_word(path: *const c_char) -> i32 {
     };
 
     let kernel = match &mut state.kernel {
-        Some(k) => k,
+        Some(SafeEngine(k)) => k,
         None => return -4,
     };
 
     // Extract text from the PDF
-    let mut extractor = TextExtractor::new();
-    let num_pages = kernel.page_count();
+    let mut _extractor = TextExtractor::new();
+    let p = Path::new(file_path);
+    let doc = match kernel.open_cached_doc(p, None) {
+        Ok(d) => d,
+        Err(_) => return -5,
+    };
     
-    let mut doc = Docx::new();
+    let num_pages = doc.pages().len() as usize;
+    let mut docx = Docx::new();
     
     for i in 0..num_pages {
-        if let Ok(page) = kernel.get_page(i) {
-            let extracted = extractor.extract_page_text(&page, i);
-            
-            // Add text to the docx
-            let para = Paragraph::new().add_run(Run::new().add_text(extracted.raw_text));
-            doc = doc.add_paragraph(para);
-            
-            if i < num_pages - 1 {
-                // Add page break
-                let break_para = Paragraph::new().add_run(Run::new().add_break(BreakType::Page));
-                doc = doc.add_paragraph(break_para);
+        if let Ok(page) = doc.pages().get(i as u16) {
+            if let Ok(text_page) = page.text() {
+                let full_text = text_page.all();
+                
+                // Add text to the docx
+                let para = Paragraph::new().add_run(Run::new().add_text(full_text));
+                docx = docx.add_paragraph(para);
+                
+                if i < num_pages - 1 {
+                    // Add page break
+                    let break_para = Paragraph::new().add_run(Run::new().add_break(BreakType::Page));
+                    docx = docx.add_paragraph(break_para);
+                }
             }
         }
     }
@@ -175,7 +211,7 @@ pub extern "C" fn qdc_convert_to_word(path: *const c_char) -> i32 {
         }
     };
     
-    if let Err(e) = doc.build().pack(file) {
+    if let Err(e) = docx.build().pack(file) {
         error!("Failed to pack docx: {:?}", e);
         return -6;
     }

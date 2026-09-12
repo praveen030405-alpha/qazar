@@ -2714,6 +2714,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "pdf-kernel",
+ "pdfium-render",
  "pollster",
  "raw-window-handle",
  "serde",
