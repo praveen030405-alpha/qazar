@@ -1,0 +1,16 @@
+[package]
+name = "fuzz-engine"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "fuzz-runner"
+path = "src/main.rs"
+
+[dependencies]
+pdf-kernel = { path = "../pdf-kernel" }
+anyhow.workspace = true
+log.workspace = true
+env_logger.workspace = true
+serde.workspace = true
+serde_json.workspace = true

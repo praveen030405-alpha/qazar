@@ -1,0 +1,54 @@
+<Page
+    x:Class="QuantumPdfViewer.Views.ViewerPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="#08080C">
+
+    <Grid>
+        <!-- Root Layout: Left Sidebar + Main Content -->
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280" /> <!-- Sidebar -->
+            <ColumnDefinition Width="*" />   <!-- Viewport -->
+        </Grid.ColumnDefinitions>
+
+        <!-- Sidebar -->
+        <Border Grid.Column="0" Background="#0C0C12" BorderBrush="#1E1E2A" BorderThickness="0,0,1,0">
+            <StackPanel Padding="16">
+                <TextBlock Text="Quantum PDF" FontSize="20" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,24" />
+                
+                <Button x:Name="OpenPdfButton" Click="OpenPdfButton_Click" Content="Open Document..." Background="#EF4444" Foreground="White" BorderThickness="0" CornerRadius="4" HorizontalAlignment="Stretch" Padding="8,12" />
+                
+                <TextBlock Text="Recent Files" FontSize="14" Foreground="#94A3B8" Margin="0,32,0,12" FontWeight="SemiBold" />
+                <!-- Placeholder for Recent Files List -->
+                <TextBlock Text="No recent files." FontSize="13" Foreground="#64748B" FontStyle="Italic" />
+            </StackPanel>
+        </Border>
+
+        <!-- Main Viewport Area -->
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="64" /> <!-- Top Toolbar -->
+                <RowDefinition Height="*" />  <!-- PDF Canvas -->
+            </Grid.RowDefinitions>
+
+            <!-- Top Toolbar -->
+            <Border Grid.Row="0" Background="#08080C" BorderBrush="#1E1E2A" BorderThickness="0,0,0,1">
+                <Grid Padding="16,0">
+                    <TextBlock x:Name="DocumentTitleText" Text="No Document Opened" VerticalAlignment="Center" FontSize="16" Foreground="#FFFFFF" FontWeight="SemiBold" />
+                </Grid>
+            </Border>
+
+            <!-- PDF Rendering Surface (Memory-Mapped WriteableBitmap draws here) -->
+            <Image x:Name="PdfRenderImage" Grid.Row="1" Stretch="Uniform" />
+            
+            <!-- Welcome Overlay -->
+            <StackPanel x:Name="WelcomeOverlay" Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="8">
+                <TextBlock Text="QDC Engine Ready" FontSize="24" FontWeight="Bold" Foreground="#FFFFFF" HorizontalAlignment="Center" />
+                <TextBlock Text="Select a document to begin rendering." FontSize="14" Foreground="#94A3B8" HorizontalAlignment="Center" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Page>

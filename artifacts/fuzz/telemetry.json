@@ -1,0 +1,11 @@
+{
+  "total_fuzzed": 8413773,
+  "inputs_per_sec": 2688.256789756272,
+  "crashes_detected": 0,
+  "rejections_caught": 4058081,
+  "valid_parsed": 4355692,
+  "uptime_seconds": 3129.8248858,
+  "seed_count": 4,
+  "status": "RUNNING_CLEAN",
+  "last_mutation": "hostile_token_inject"
+}

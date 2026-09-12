@@ -1,0 +1,9 @@
+[package]
+name = "memory-governor"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+log.workspace = true
+parking_lot.workspace = true
+thiserror.workspace = true

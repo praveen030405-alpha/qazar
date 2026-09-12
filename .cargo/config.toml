@@ -1,0 +1,6 @@
+[registries.crates-io]
+protocol = "sparse"
+
+[target.aarch64-linux-android]
+ar = "C:/Users/Praveen Kumar/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-ar.exe"
+linker = "C:/Users/Praveen Kumar/AppData/Local/Android/Sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android24-clang.cmd"

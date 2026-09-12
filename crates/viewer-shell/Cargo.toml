@@ -1,0 +1,27 @@
+[package]
+name = "viewer-shell"
+version.workspace = true
+edition.workspace = true
+
+[[bin]]
+name = "meridian"
+path = "src/main.rs"
+
+[dependencies]
+pdf-kernel = { path = "../pdf-kernel" }
+memory-governor = { path = "../memory-governor" }
+tile-engine = { path = "../tile-engine" }
+gpu-compositor = { path = "../gpu-compositor" }
+text-engine = { path = "../text-engine" }
+annot-engine = { path = "../annot-engine" }
+color-engine = { path = "../color-engine" }
+uuid.workspace = true
+image.workspace = true
+
+log.workspace = true
+env_logger.workspace = true
+anyhow.workspace = true
+wgpu.workspace = true
+parking_lot.workspace = true
+crossbeam-channel.workspace = true
+rayon.workspace = true

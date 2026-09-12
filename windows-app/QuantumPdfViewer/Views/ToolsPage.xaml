@@ -1,0 +1,83 @@
+<Page
+    x:Class="QuantumPdfViewer.Views.ToolsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="#08080C">
+
+    <Grid Padding="32">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,32">
+            <TextBlock Text="QDC Advanced Toolkit" FontSize="28" FontWeight="Bold" Foreground="#FFFFFF" />
+            <TextBlock Text="High-performance document processing powered by Rust." FontSize="14" Foreground="#94A3B8" Margin="0,4,0,0" />
+        </StackPanel>
+
+        <GridView Grid.Row="1" SelectionMode="None">
+            <GridView.ItemContainerStyle>
+                <Style TargetType="GridViewItem">
+                    <Setter Property="Margin" Value="0,0,24,24" />
+                </Style>
+            </GridView.ItemContainerStyle>
+
+            <!-- Card 1: PDF to Word -->
+            <Button Click="PdfToWord_Click" Background="#13131A" BorderBrush="#1E1E2A" BorderThickness="1" CornerRadius="8" Padding="24" Width="240" Height="140" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <StackPanel>
+                    <SymbolIcon Symbol="Document" Foreground="#3B82F6" Width="32" Height="32" HorizontalAlignment="Left" />
+                    <TextBlock Text="PDF to Word" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,16,0,4" />
+                    <TextBlock Text="Convert PDF to DOCX using QDC." FontSize="12" Foreground="#64748B" TextWrapping="Wrap" />
+                </StackPanel>
+            </Button>
+
+            <!-- Card 2: PDF to Excel -->
+            <Button Background="#13131A" BorderBrush="#1E1E2A" BorderThickness="1" CornerRadius="8" Padding="24" Width="240" Height="140" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <StackPanel>
+                    <SymbolIcon Symbol="Calculator" Foreground="#10B981" Width="32" Height="32" HorizontalAlignment="Left" />
+                    <TextBlock Text="PDF to Excel" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,16,0,4" />
+                    <TextBlock Text="Extract tables to XLSX format." FontSize="12" Foreground="#64748B" TextWrapping="Wrap" />
+                </StackPanel>
+            </Button>
+
+            <!-- Card 3: Merge PDF -->
+            <Button Background="#13131A" BorderBrush="#1E1E2A" BorderThickness="1" CornerRadius="8" Padding="24" Width="240" Height="140" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <StackPanel>
+                    <SymbolIcon Symbol="Copy" Foreground="#F59E0B" Width="32" Height="32" HorizontalAlignment="Left" />
+                    <TextBlock Text="Merge PDFs" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,16,0,4" />
+                    <TextBlock Text="Combine multiple documents." FontSize="12" Foreground="#64748B" TextWrapping="Wrap" />
+                </StackPanel>
+            </Button>
+
+            <!-- Card 4: Compress PDF -->
+            <Button Background="#13131A" BorderBrush="#1E1E2A" BorderThickness="1" CornerRadius="8" Padding="24" Width="240" Height="140" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <StackPanel>
+                    <SymbolIcon Symbol="Map" Foreground="#8B5CF6" Width="32" Height="32" HorizontalAlignment="Left" />
+                    <TextBlock Text="Compress" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,16,0,4" />
+                    <TextBlock Text="Reduce file size with smart OCR." FontSize="12" Foreground="#64748B" TextWrapping="Wrap" />
+                </StackPanel>
+            </Button>
+            
+            <!-- Card 5: Protect -->
+            <Button Background="#13131A" BorderBrush="#1E1E2A" BorderThickness="1" CornerRadius="8" Padding="24" Width="240" Height="140" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                <StackPanel>
+                    <SymbolIcon Symbol="Permissions" Foreground="#EF4444" Width="32" Height="32" HorizontalAlignment="Left" />
+                    <TextBlock Text="Protect" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,16,0,4" />
+                    <TextBlock Text="AES-256 Encryption &amp; DRM." FontSize="12" Foreground="#64748B" TextWrapping="Wrap" />
+                </StackPanel>
+            </Button>
+        </GridView>
+
+        <!-- Progress Overlay (Hidden by default) -->
+        <Grid x:Name="ProgressOverlay" Grid.RowSpan="2" Background="#80000000" Visibility="Collapsed">
+            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Background="#13131A" Padding="32" CornerRadius="12" BorderBrush="#1E1E2A" BorderThickness="1">
+                <ProgressRing IsActive="True" Width="48" Height="48" Foreground="#EF4444" />
+                <TextBlock x:Name="ProgressText" Text="Converting Document..." FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,16,0,0" HorizontalAlignment="Center" />
+                <TextBlock Text="Delegating to Rust QDC Engine" FontSize="12" Foreground="#64748B" Margin="0,4,0,0" HorizontalAlignment="Center" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Page>

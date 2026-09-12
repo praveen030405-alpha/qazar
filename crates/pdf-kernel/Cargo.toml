@@ -1,0 +1,9 @@
+[package]
+name = "pdf-kernel"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pdfium-render.workspace = true
+log.workspace = true
+thiserror.workspace = true

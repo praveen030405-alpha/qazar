@@ -1,0 +1,14 @@
+[package]
+name = "text-engine"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+pdf-kernel = { path = "../pdf-kernel" }
+memory-governor = { path = "../memory-governor" }
+rustybuzz.workspace = true
+icu.workspace = true
+tantivy.workspace = true
+log.workspace = true
+parking_lot.workspace = true
+thiserror.workspace = true

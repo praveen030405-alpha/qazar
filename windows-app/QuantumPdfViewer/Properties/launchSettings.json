@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "QuantumPdfViewer (Package)": {
+      "commandName": "MsixPackage"
+    },
+    "QuantumPdfViewer (Unpackaged)": {
+      "commandName": "Project"
+    }
+  }
+}

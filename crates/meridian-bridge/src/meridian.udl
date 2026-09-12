@@ -1,0 +1,7 @@
+namespace meridian {
+    void initialize_meridian();
+    string? open_document(string file_path);
+    i32 get_page_count();
+    
+    // Additional iPad bindings will go here for pencilKit
+};

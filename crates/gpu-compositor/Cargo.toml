@@ -1,0 +1,14 @@
+[package]
+name = "gpu-compositor"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+tile-engine = { path = "../tile-engine" }
+memory-governor = { path = "../memory-governor" }
+pdf-kernel = { path = "../pdf-kernel" }
+wgpu.workspace = true
+bytemuck.workspace = true
+log.workspace = true
+parking_lot.workspace = true
+thiserror.workspace = true
