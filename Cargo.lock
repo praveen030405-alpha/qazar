@@ -3406,6 +3406,7 @@ dependencies = [
  "rustybuzz",
  "tantivy",
  "thiserror 2.0.20",
+ "zstd-sys",
 ]
 
 [[package]]
