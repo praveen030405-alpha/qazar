@@ -27,9 +27,11 @@ jobs:
 
       - name: Build Rust Core (meridian-bridge)
         run: |
+          export SDKROOT=$(xcrun --sdk iphoneos --show-sdk-path)
+          export CFLAGS="-isysroot $SDKROOT"
+          export LDFLAGS="-isysroot $SDKROOT"
           cd crates/meridian-bridge
           cargo build --target aarch64-apple-ios --release
-          # In a full build, we would use lipo to create an XCFramework here
 
       - name: Build iOS/iPadOS App
         run: |
