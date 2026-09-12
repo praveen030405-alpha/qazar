@@ -8,7 +8,7 @@ pub mod signature;
 pub mod layers;
 pub mod selection;
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -213,8 +213,8 @@ impl AnnotOp {
                 [min_x, min_y, max_x, max_y]
             },
             AnnotKind::Polygon(_) | AnnotKind::Polyline(_) | AnnotKind::AreaMeasure(_) => {
-                let mut min_x = f32::MAX; let mut min_y = f32::MAX;
-                let mut max_x = f32::MIN; let mut max_y = f32::MIN;
+                let _min_x = f32::MAX; let _min_y = f32::MAX;
+                let _max_x = f32::MIN; let _max_y = f32::MIN;
                 // Note: Polygon or Polyline. They both have .points
                 // For simplicity, we just match a default box if empty
                 [0.0, 0.0, 0.0, 0.0]

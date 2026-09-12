@@ -24,7 +24,7 @@ use memory_governor::{MemoryGovernor, MemoryTier};
 use parking_lot::Mutex;
 use pdf_kernel::PdfEngine;
 use serde::{Deserialize, Serialize};
-use text_engine::extractor::{ExtractedPage, ExtractedWord, TextExtractor};
+use text_engine::extractor::ExtractedPage;
 use text_engine::index::TantivySearchIndex;
 use text_engine::search::SearchEngine;
 use uuid::Uuid;
@@ -333,7 +333,7 @@ pub extern "system" fn Java_com_qazar_pdfviewer_bridge_MeridianNativeBridge_nati
 
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_qazar_pdfviewer_bridge_MeridianNativeBridge_nativeGetPageText(
-    mut env: JNIEnv,
+    env: JNIEnv,
     _class: JClass,
     page_index: jint,
 ) -> jstring {
@@ -511,7 +511,7 @@ pub extern "system" fn Java_com_qazar_pdfviewer_bridge_MeridianNativeBridge_nati
 /// Safe Implementation: Uses built-in `byte_array_from_slice` which prevents unsafe raw-pointer boundaries and bounds-checks the allocation.
 #[unsafe(no_mangle)]
 pub extern "system" fn Java_com_qazar_pdfviewer_bridge_MeridianNativeBridge_nativeRenderPageDirect(
-    mut env: JNIEnv,
+    env: JNIEnv,
     _class: JClass,
     page_index: jint,
     dpi: jfloat,

@@ -3,7 +3,7 @@
 //! This crate exposes the pure Rust backend as a dynamic library (`qdc_engine.dll`)
 //! consumable via P/Invoke from a C# WinUI 3 frontend application.
 
-use std::ffi::{c_char, CStr, CString};
+use std::ffi::c_char;
 use std::sync::Once;
 use log::{info, error};
 
