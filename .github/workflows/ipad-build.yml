@@ -28,6 +28,9 @@ jobs:
       - name: Build Rust Core (meridian-bridge)
         run: |
           cd crates/meridian-bridge
+          export SDKROOT=$(xcrun --sdk iphoneos --show-sdk-path)
+          export CFLAGS="-isysroot $SDKROOT -miphoneos-version-min=14.0 -arch arm64"
+          export LDFLAGS="-isysroot $SDKROOT -miphoneos-version-min=14.0 -arch arm64"
           cargo rustc --target aarch64-apple-ios --release -- --crate-type staticlib
 
       - name: Build iOS/iPadOS App
