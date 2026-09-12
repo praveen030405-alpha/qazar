@@ -1,0 +1,9 @@
+Unhandled exception. System.Runtime.InteropServices.COMException (0x80040154): Class not registered (0x80040154 (REGDB_E_CLASSNOTREG))
+   at System.Runtime.InteropServices.Marshal.ThrowExceptionForHR(Int32 errorCode)
+   at WinRT.ActivationFactory.Get(String typeName)
+   at Microsoft.Windows.ApplicationModel.WindowsAppRuntime.DeploymentInitializeOptions.get__objRef_global__Microsoft_Windows_ApplicationModel_WindowsAppRuntime_DeploymentInitializeOptions()
+   at Microsoft.Windows.ApplicationModel.WindowsAppRuntime.DeploymentInitializeOptions..ctor()
+   at Microsoft.Windows.ApplicationModel.WindowsAppRuntime.DeploymentManagerCS.AutoInitialize.get_Options() in C:\Users\Praveen Kumar\.nuget\packages\microsoft.windowsappsdk.foundation\2.3.9\include\DeploymentManagerAutoInitializer.cs:line 44
+   at Microsoft.Windows.ApplicationModel.WindowsAppRuntime.DeploymentManagerCS.AutoInitialize.AccessWindowsAppSDK() in C:\Users\Praveen Kumar\.nuget\packages\microsoft.windowsappsdk.foundation\2.3.9\include\DeploymentManagerAutoInitializer.cs:line 30
+   at Microsoft.Windows.ApplicationModel.WindowsAppRuntime.Common.AutoInitialize.InitializeWindowsAppSDK() in C:\Users\Praveen Kumar\.nuget\packages\microsoft.windowsappsdk.foundation\2.3.9\include\WindowsAppRuntimeAutoInitializer.cs:line 22
+   at .cctor()

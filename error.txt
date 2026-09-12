@@ -1,0 +1,1 @@
+[2026-09-12T14:34:35Z INFO  qdc_engine] QDC Engine Initialized (WinUI 3 Bridge)

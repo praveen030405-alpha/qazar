@@ -1,0 +1,340 @@
+    val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
+    var loadedDocTitle by remember { mutableStateOf(documentTitle) }
+    var loadedPages by remember { mutableStateOf<List<PdfPageModel>>(emptyList()) }
+    var isDocLoaded by remember { mutableStateOf(false) }
+
+    val docKey = documentPath ?: documentTitle
+
+    // UI Chrome Visibility
+    var isUiVisible by remember { mutableStateOf(true) }
+    var isAnnotateActive by remember { mutableStateOf(false) }
+    var isRadialAnnotExpanded by remember { mutableStateOf(false) }
+    var isSearchActive by remember { mutableStateOf(false) }
+    var viewingMode by remember { mutableStateOf(ViewingMode.DEFAULT) }
+    var layoutMode by remember { mutableStateOf(LayoutMode.CONTINUOUS_VERTICAL) }
+    // Dialog & Sheet states
+    }
+
+    // Phase 5: Forms, Signatures & Redaction state
+    var showRedactionDialog by remember { mutableStateOf(false) }
+    var showSignatureModal by remember { mutableStateOf(false) }
+    var showAuditLogSheet by remember { mutableStateOf(false) }
+    var auditEntries by remember { mutableStateOf<List<AuditLogEntry>>(emptyList()) }
+    var activeRedactions by remember { mutableStateOf<List<RedactionArea>>(emptyList()) }
+    var activeSignatures by remember { mutableStateOf<List<SignatureInfo>>(emptyList()) }
+
+    // Hardware GPU matrix scaling — Instantaneous Zero-Latency Zoom & 2D Pan
+    val transformState = remember { ViewportHardwareTransformState() }
+
+    val listState = rememberLazyListState()
+    val pagerState = androidx.compose.foundation.pager.rememberPagerState(pageCount = { if (loadedPages.isEmpty()) 1 else loadedPages.size })
+    val coroutineScope = rememberCoroutineScope()
+    var searchQuery by remember { mutableStateOf("") }
+    var studioState by remember { mutableStateOf(AnnotationStudioState()) }
+    var pageStrokes by remember { mutableStateOf(mapOf<Int, List<ComposeStroke>>()) }
+    var pageRectangles by remember { mutableStateOf(mapOf<Int, List<ComposeRectAnnotation>>()) }
+    var isThumbnailStripVisible by remember { mutableStateOf(false) }
+
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val minZoomLimit = if (isLandscape) 0.5f else 1.0f
+
+    // Back navigation within viewport: Returns to PAN mode and closes annotation speed dial first
+    androidx.activity.compose.BackHandler(enabled = isRadialAnnotExpanded || studioState.activeTool != AnnotationTool.PAN || isThumbnailStripVisible) {
+        if (isThumbnailStripVisible) {
+            isThumbnailStripVisible = false
+        } else {
+            isRadialAnnotExpanded = false
+            studioState = studioState.copy(activeTool = AnnotationTool.PAN)
+        }
+    }
+
+    // Header remains loaded and steady once rendered (no flickering or reloading per scroll)
+
+    // Load real PDF document binary asynchronously
+    LaunchedEffect(documentPath, documentTitle) {
+        try {
+            android.util.Log.e("MeridianTap", "A4ContinuousViewport loading doc: path=$documentPath, title=$documentTitle")
+            isDocLoaded = false
+            
+            // Wait for navigation transition to finish perfectly before starting heavy I/O
+            kotlinx.coroutines.delay(300)
+            
+            val isProcPath = documentPath?.startsWith("/proc/self/fd/") == true
+            val (extractedTitle, realPages) = if (documentPath != null && (isProcPath || File(documentPath).exists())) {
+                com.example.meridian.data.RealPdfLoader.loadPdfFromFile(
+                    context = context,
+                    filePath = documentPath,
+                    pfd = documentPfd,
+                    viewingMode = viewingMode
+                )
+            } else {
+                com.example.meridian.data.RealPdfLoader.loadPdfFromAssets(
+                    context = context,
+                    assetFileName = assetFileName ?: documentTitle,
+                    viewingMode = viewingMode
+                )
+            }
+            
+            // Bulletproof title resolution
+            val validExtracted = extractedTitle.isNotBlank() && 
+                                 extractedTitle != "Document.pdf" &&
+                                 !extractedTitle.all { it.isDigit() } &&
+                                 !extractedTitle.matches(Regex("^[0-9]+(\\.pdf)?$"))
+            
+            val validIntent = documentTitle.isNotBlank() && 
+                              documentTitle != "Document.pdf" &&
+                              !documentTitle.matches(Regex("^[0-9]+(\\.pdf)?$"))
+
+            var finalTitle = when {
+                validIntent -> documentTitle
+                validExtracted -> extractedTitle
+                else -> documentTitle // Fallback even if it's numeric
+            }
+            
+            // Ensure no ugly file extensions or trailing spaces
+            loadedDocTitle = finalTitle.removeSuffix(".pdf").removeSuffix(".PDF").trim()
+            
+            loadedPages = realPages
+            
+            if (documentPath != null && loadedDocTitle.isNotBlank()) {
+                val size = documentPfd?.statSize ?: File(documentPath).length()
+                com.example.meridian.data.PdfLibraryManager.trackExternalDocument(context, documentPath, loadedDocTitle, size)
+            }
+
+            if (realPages.isNotEmpty()) {
+                // Load isolated per-document annotations
+                val (docStrokes, docRects) = AnnotationStorageManager.getDocAnnotations(context, docKey)
+                pageStrokes = docStrokes
+                pageRectangles = docRects
+                bookmarkedPages = BookmarkManager.getBookmarks(context, docKey)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            isDocLoaded = true
+        }
+    }
+
+    // Synchronize system status bar visibility
+    LaunchedEffect(isUiVisible, viewingMode) {
+        onSetSystemBarsVisible(isUiVisible)
+        onSetLightStatusBars(false) // Always use light (white) status bar icons because TopCommandBar is dark
+    }
+
+    var isGutterVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(isUiVisible, listState.isScrollInProgress) {
+        if (isUiVisible || listState.isScrollInProgress) {
+            isGutterVisible = true
+        }
+        if (!listState.isScrollInProgress && !pagerState.isScrollInProgress) {
+            kotlinx.coroutines.delay(3000)
+            isGutterVisible = false
+        }
+    }
+
+    var isThumbnailArrowVisible by remember { mutableStateOf(true) }
+
+    LaunchedEffect(isThumbnailArrowVisible, listState.isScrollInProgress, pagerState.isScrollInProgress, isThumbnailStripVisible) {
+        if (isThumbnailArrowVisible && !listState.isScrollInProgress && !pagerState.isScrollInProgress && !isThumbnailStripVisible) {
+            kotlinx.coroutines.delay(3000)
+            isThumbnailArrowVisible = false
+        }
+    }
+
+    LaunchedEffect(listState.isScrollInProgress, pagerState.isScrollInProgress) {
+        if (listState.isScrollInProgress || pagerState.isScrollInProgress) {
+            isThumbnailArrowVisible = true
+        }
+    }
+
+    // Dynamic search querying the native engine and universal text layer
+    val searchHits = remember { mutableStateOf<List<com.example.meridian.ui.viewer.SearchHitModel>>(emptyList()) }
+
+    LaunchedEffect(searchQuery, loadedPages) {
+        if (searchQuery.isBlank()) {
+            searchHits.value = emptyList()
+        } else {
+            kotlinx.coroutines.delay(250) // Debounce typing
+            val hits = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                com.example.meridian.data.DocumentSearchEngine.search(
+                    filePath = documentPath,
+                    pages = loadedPages,
+                    query = searchQuery
+                )
+            }
+            searchHits.value = hits
+        }
+    }
+
+    var currentSearchHitIndex by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(searchHits.value) {
+        currentSearchHitIndex = 0
+        if (searchHits.value.isNotEmpty()) {
+            val firstPage = searchHits.value.first().pageIndex
+            listState.animateScrollToItem(firstPage)
+        }
+    }
+
+    val currentVisiblePage = remember {
+        derivedStateOf {
+            if (layoutMode == LayoutMode.SINGLE_PAGE_HORIZONTAL) {
+                (pagerState.currentPage + 1).coerceIn(1, if (loadedPages.isEmpty()) 1 else loadedPages.size)
+            } else {
+                val visibleItems = listState.layoutInfo.visibleItemsInfo
+                if (visibleItems.isEmpty()) {
+                    (listState.firstVisibleItemIndex + 1).coerceIn(1, if (loadedPages.isEmpty()) 1 else loadedPages.size)
+                } else {
+                    val layoutInfo = listState.layoutInfo
+                    val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
+                    val validItems = visibleItems.filter { it.key is Int }
+                    if (validItems.isEmpty()) {
+                        1
+                    } else {
+                        val dominant = validItems.minByOrNull { item ->
+                            val itemCenter = item.offset + (item.size / 2)
+                            kotlin.math.abs(itemCenter - viewportCenter)
+                        } ?: validItems.first()
+                        ((dominant.key as Int) + 1).coerceIn(1, if (loadedPages.isEmpty()) 1 else loadedPages.size)
+                    }
+                }
+            }
+        }
+    }
+
+    val visiblePageTracker = remember(listState, pagerState) {
+        com.example.meridian.engine.VisiblePageTracker(listState, pagerState) { loadedPages.size }
+    }
+
+    LaunchedEffect(listState.layoutInfo, pagerState.currentPage, pagerState.currentPageOffsetFraction, layoutMode) {
+        visiblePageTracker.update(layoutMode)
+    }
+
+    // Predictive Page Prefetching (M3 Ring-Buffer Engine)
+    DisposableEffect(documentPath, loadedPages.size, viewingMode) {
+        if (documentPath != null && loadedPages.isNotEmpty()) {
+            val prefetchManager = com.example.meridian.engine.PrefetchManager(documentPath, loadedPages.size, visiblePageTracker, viewingMode)
+            prefetchManager.start()
+            onDispose { prefetchManager.stop() }
+        } else {
+            onDispose {}
+        }
+    }
+
+    val isCurrentPageBookmarked = remember(currentVisiblePage.value, bookmarkedPages) {
+        bookmarkedPages.contains(currentVisiblePage.value - 1)
+    }
+
+    // Minimal right-side floating scroll indicator timer
+    var showScrollIndicator by remember { mutableStateOf(false) }
+    var isDraggingScrubber by remember { mutableStateOf(false) }
+
+    LaunchedEffect(listState.isScrollInProgress, isDraggingScrubber) {
+        if (listState.isScrollInProgress || isDraggingScrubber) {
+            showScrollIndicator = true
+        } else {
+            delay(1400)
+            showScrollIndicator = false
+        }
+    }
+
+    // Dynamic scroll position fraction provider (evaluated only inside Canvas draw scope to prevent recomposition)
+    val scrollFractionProvider = remember {
+        {
+            val totalPages = loadedPages.size
+            if (totalPages <= 1) 0f
+            else {
+                val firstVisible = listState.firstVisibleItemIndex
+                val offset = listState.firstVisibleItemScrollOffset
+                val itemSize = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.size ?: 1
+                val continuousPos = firstVisible + (offset.toFloat() / itemSize.toFloat().coerceAtLeast(1f))
+                (continuousPos / (totalPages - 1).toFloat()).coerceIn(0f, 1f)
+            }
+        }
+    }
+
+    val canvasBg = when (viewingMode) {
+        ViewingMode.DEFAULT -> CanvasWorkspaceBg
+        ViewingMode.PAPER -> PaperCanvasBg
+        ViewingMode.SEPIA -> SepiaCanvasBg
+    }
+
+    val statusBarTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val headerHeight = 56.dp
+    val initialTopPadding = statusBarTop + headerHeight + 8.dp
+
+    // Double tap tracker
+    var lastTapTime by remember { mutableLongStateOf(0L) }
+
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(canvasBg)
+    ) {
+        // 1. Full-Screen Continuous Document Canvas (fills screen edge-to-edge)
+        val topPaddingAnim by animateDpAsState(
+            targetValue = if (isUiVisible) initialTopPadding else WindowInsets.statusBars.asPaddingValues().calculateTopPadding(),
+            animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+            label = "TopPaddingAnim"
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clipToBounds()
+                .pdfGestures(
+                    transformState = transformState,
+                    listState = listState,
+                    coroutineScope = coroutineScope,
+                    minZoomLimit = minZoomLimit,
+                    isPanTool = (studioState.activeTool == AnnotationTool.PAN),
+                    isSearchActive = isSearchActive,
+                    isThumbnailStripVisible = isThumbnailStripVisible,
+                    onToggleUi = { 
+                        if (isThumbnailStripVisible) {
+                            isThumbnailStripVisible = false
+                        } else {
+                            isUiVisible = !isUiVisible 
+                        }
+                    },
+                    onHideThumbnailStrip = { isThumbnailStripVisible = false },
+                    onShowThumbnailArrow = { isThumbnailArrowVisible = true }
+                )
+                .graphicsLayer {
+                    scaleX = transformState.scale
+                    scaleY = transformState.scale
+                    translationX = transformState.panX
+                    translationY = transformState.panY
+                    transformOrigin = TransformOrigin(0.5f, 0.5f)
+                },
+            contentAlignment = Alignment.TopCenter
+        ) {
+            PdfViewport(
+                context = context,
+                docKey = docKey,
+                documentPath = documentPath,
+                loadedPages = loadedPages,
+                listState = listState,
+                pagerState = pagerState,
+                transformState = transformState,
+                studioState = studioState,
+                searchHits = searchHits.value,
+                currentSearchHitIndex = currentSearchHitIndex,
+                searchQuery = searchQuery,
+                layoutMode = layoutMode,
+                bookmarkedPages = bookmarkedPages,
+                activeRedactions = activeRedactions,
+                activeSignatures = activeSignatures,
+                pageStrokes = pageStrokes,
+                pageRectangles = pageRectangles,
+                viewingMode = viewingMode,
+                topPaddingAnim = topPaddingAnim,
+                onStrokesUpdated = { pageStrokes = it },
+                onRectanglesUpdated = { pageRectangles = it },
+                onStudioStateUpdated = { studioState = it },
+                onToggleBookmark = { pageIdx ->
+                    BookmarkManager.toggleBookmark(context, docKey, pageIdx)
+                    bookmarkedPages = BookmarkManager.getBookmarks(context, docKey)
