@@ -12,3 +12,4 @@ tantivy.workspace = true
 log.workspace = true
 parking_lot.workspace = true
 thiserror.workspace = true
+zstd = { version = "0.13.3", features = ["vendored"] }
