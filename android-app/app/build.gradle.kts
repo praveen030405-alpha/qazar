@@ -79,7 +79,7 @@ tasks.register<Exec>("buildRustBridge") {
     environment("CC_aarch64_linux_android", "$toolchainBin\\aarch64-linux-android35-clang.cmd")
     environment("AR_aarch64_linux_android", "$toolchainBin\\llvm-ar.exe")
     environment("CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER", "$toolchainBin\\aarch64-linux-android35-clang.cmd")
-    commandLine("cargo", "build", "--target-dir", "target-android", "--target", "aarch64-linux-android", "-p", "meridian-bridge")
+    commandLine("cargo", "rustc", "--target-dir", "target-android", "--target", "aarch64-linux-android", "-p", "meridian-bridge", "--", "--crate-type", "cdylib")
     doLast {
         val soSrc = file("$projectRoot/target-android/aarch64-linux-android/debug/libmeridian_bridge.so")
         val soDst = file("src/main/jniLibs/arm64-v8a/libmeridian.so")

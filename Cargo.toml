@@ -10,7 +10,7 @@ members = [
     "crates/color-engine",
     "crates/fuzz-engine",
     "crates/viewer-shell",
-    "crates/meridian-bridge", "crates/qdc-genome", "crates/qdc-win-bridge",
+    "crates/meridian-bridge", "crates/qdc-genome", "crates/qdc-win-bridge", "crates/speech-engine", "dummy_lib",
 ]
 
 [workspace.package]

@@ -1,0 +1,11 @@
+[package]
+name = "speech-engine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+log.workspace = true
+thiserror.workspace = true
+async-trait = "0.1.74"
+bytes = "1.5.0"

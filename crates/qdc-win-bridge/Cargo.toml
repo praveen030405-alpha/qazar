@@ -15,6 +15,10 @@ gpu-compositor = { path = "../gpu-compositor" }
 text-engine = { path = "../text-engine" }
 annot-engine = { path = "../annot-engine" }
 color-engine = { path = "../color-engine" }
+speech-engine = { path = "../speech-engine" }
+docx-rs = "0.4.22"
+once_cell = "1.21.4"
+tokio = { version = "1.53.1", features = ["rt", "rt-multi-thread"] }
 
 uuid.workspace = true
 log.workspace = true
